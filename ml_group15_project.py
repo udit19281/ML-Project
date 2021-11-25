@@ -10,10 +10,15 @@ Original file is located at
 """
 
 # Commented out IPython magic to ensure Python compatibility.
-# from google.colab import drive
-# drive.mount('/content/gdrive')
+from google.colab import drive
+drive.mount('/content/gdrive')
 # %cd '/content/gdrive/MyDrive/ML datasets'
 # %ls
+
+#download
+import nltk
+from nltk.corpus import stopwords
+nltk.download('stopwords')
 
 #importing libraries
 import pandas as pd
@@ -21,18 +26,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import re
-from sklearn.model_selection import train_test_split
-import nltk
-from nltk.corpus import stopwords
 import time
 import plotly.express as graph
-from sklearn.model_selection import cross_val_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn import metrics
-from sklearn.metrics import classification_report
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
+from sklearn.feature_extraction.text import CountVectorizer,TfidfTransformer
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import classification_report
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import SGDClassifier
+from sklearn.svm import SVC
 
 """#Data Analysis:"""
 
@@ -40,10 +51,15 @@ from sklearn.metrics import roc_curve
 data=pd.read_csv('mbti_1.csv')
 
 #Description about data
-print("Description: \n", data.describe())
+print("Dataset Description: \n", data.describe())
+print("\n")
+#Info about data
+print("Datset Info: \n", data.info())
+print("\n")
 
 #Shape data
 print("Dimensions of Dataset: ",data.shape)
+print("\n\n")
 
 #Check for null values
 print("Null Values: \n")
@@ -56,9 +72,14 @@ print('\n')
 print("No of posts for each mbti Personality: \n")
 print(countCategory)
 
+#Frequency vs label graphs
+#Bar Graph
 print(countCategory.plot(kind='bar',figsize=(8,8),xlabel='Category',ylabel='Frequency of posts', title='Bar graph for types of mbti personality in the data'))
+print("\n")
+#pie graph
 graph.pie(data,names='type',title='Pie graph for types of mbti personality in the data', height=600, width=600)
 
+#Plot to show the distribution of Lengths of all Posts
 df= data["posts"].apply(len)
 graph=sns.histplot(df)
 graph.set_title("Distribution of Lengths of all Posts")
@@ -75,6 +96,8 @@ def helper(ls, ch1, Type, ind):
     i= i+1
   return ls
 
+'''This function takes dataset as input 
+   It adds 4 columns(dimnesions) for 4 type indicators(personality traits)'''
 #function to add columns for 4 type indicators
 def Add_Type_Indicators(data):
   IE = np.zeros(data.shape[0])
@@ -98,7 +121,7 @@ def Add_Type_Indicators(data):
 data_copy=data.copy(deep=True)
 Add_Type_Indicators(data_copy)
 
-# Plotting Classification class vs Frequency plot
+# Plotting Classification class vs Frequency plot for IE, NS, TF, JP
 
 I,N,T,J=data_copy['IE'].value_counts()[0],data_copy['NS'].value_counts()[0],data_copy['TF'].value_counts()[0],data_copy['JP'].value_counts()[0]
 E,S,F,P=data_copy['IE'].value_counts()[1],data_copy['NS'].value_counts()[1],data_copy['TF'].value_counts()[1],data_copy['JP'].value_counts()[1]
@@ -133,6 +156,10 @@ data_copy=data_copy_1.copy(deep=True)
 #converting all text/posts to lower case
 data_copy["posts"] = data_copy["posts"].str.lower()
 
+'''This function takes a list of texual data as input.
+   It performs pre-processing and natural language processing on the data.
+   It returns the processed textual data list as output.'''
+
 #remove url links
 for i in range(data_copy.shape[0]):
   post_temp=data_copy._get_value(i, 'posts')
@@ -164,7 +191,6 @@ for i in range(data_copy.shape[0]):
   data_copy._set_value(i, 'posts', post_temp)
 
 #remove stop words
-nltk.download('stopwords')
 remove_words = stopwords.words("english")
 for i in range(data_copy.shape[0]):
   post_temp=data_copy._get_value(i, 'posts')
@@ -197,7 +223,6 @@ del data_copy['type']
 """#Feature Selection:"""
 
 #Finding features using CountVectorizer by converting the posts into matrix of word count
-from sklearn.feature_extraction.text import CountVectorizer,TfidfTransformer
 post_list=[]
 for i,j in data_copy.posts.iteritems():
   post_list.append(j)
@@ -223,6 +248,10 @@ X_train_JP, X_test_JP, Y_train_JP, Y_test_JP = train_test_split(X_data, Y_data['
 """#Models analysis and Methodology:"""
 
 #Function to predict labels for X_test of the given model
+'''This function takes 4 GridSearchCV model as input.
+  It fits all 4 models with thier resoective training data.
+  It fincs the best estimator of GridSearchCV and uses 
+  it to return predicted values of 4 test sets'''
 def predict(model1, model2, model3, model4):
   #IE prediction
   ypredIE=model1.fit(X_train_IE,Y_train_IE).best_estimator_.predict(X_test_IE)
@@ -237,6 +266,9 @@ def predict(model1, model2, model3, model4):
 
 
 #Function to print Classification Report of the given model
+'''This function takes 4 predicted output datasets as input.
+   It computes classfication report: accuracy, recall, f1-score.
+   It prints classification reports for all 4 predictions (models). '''
 def print_classification_report(ypredIE, ypredNS, ypredTF, ypredJP):
   #Classification Report for Introversion(I) / Extroversion(E)
   print("Classification Report for Introversion(I) / Extroversion(E): \n ")
@@ -268,6 +300,9 @@ def print_classification_report(ypredIE, ypredNS, ypredTF, ypredJP):
 
 
 #Function to print Confusion matrix for the given model
+'''This function takes 4 predicted output datasets as input.
+   It computes confusion matrix.
+   It prints confusion matrix for all 4 predictions (models). '''
 def print_confusion_matrix(ypredIE, ypredNS, ypredTF, ypredJP):
   #Confusion matrix for Introversion(I) / Extroversion(E):
   plt.figure()
@@ -311,6 +346,8 @@ def print_confusion_matrix(ypredIE, ypredNS, ypredTF, ypredJP):
 
 
 #Function to print roc_auc_curve for the given model
+'''This function takes 4 predicted probabilitie datasets as input.
+   It plots ROC Curve for all 4 predictions (models). '''
 def print_roc_auc_curve(probIE, probNS, probTF, probJP):
   
   fp_IE, tp_IE, val = roc_curve(Y_test_IE, probIE[:,1])
@@ -331,46 +368,43 @@ def print_roc_auc_curve(probIE, probNS, probTF, probJP):
 
 """# Naive Bayes Model"""
 
-#Naive Bayes Model by 
-from sklearn.naive_bayes import GaussianNB
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import GridSearchCV
-
+#Naive Bayes Model
 naivegb=GaussianNB()
+#Apply stratified cross validation
 grid1=GridSearchCV(naivegb,{},cv=5)
 grid2=GridSearchCV(naivegb,{},cv=5)
 grid3=GridSearchCV(naivegb,{},cv=5)
 grid4=GridSearchCV(naivegb,{},cv=5)
 #prediction
 ypredIE, ypredNS, ypredTF, ypredJP= predict(grid1, grid2, grid3, grid4)
-#Print classificatio report for all four axis
+#Print classificatio report for all four dimensions
 print_classification_report(ypredIE, ypredNS, ypredTF, ypredJP)
 
 #print confusion matrix
 print_confusion_matrix(ypredIE, ypredNS, ypredTF, ypredJP)
 
-#plot confusion matrix
+#plot ROC Curve
 print_roc_auc_curve(grid1.best_estimator_.predict_proba(X_test_IE), grid2.best_estimator_.predict_proba(X_test_NS),
                     grid3.best_estimator_.predict_proba(X_test_TF),grid4.best_estimator_.predict_proba(X_test_JP))
 
 """#Logistic regression"""
 
-from sklearn.metrics import classification_report
-from sklearn.linear_model import LogisticRegression
-
+#Logistic Regression model
 log =LogisticRegression(max_iter=500)
+#Apply stratified cross validation
 grid1= GridSearchCV(log,{},cv=5)
 grid2= GridSearchCV(log,{},cv=5)
 grid3= GridSearchCV(log,{},cv=5)
 grid4= GridSearchCV(log,{},cv=5)
 #prediction
 ypredIE, ypredNS, ypredTF, ypredJP= predict(grid1, grid2, grid3, grid4)
-
-#Print classificatio report for all four axis
+#Print classificatio report for all four dimensions
 print_classification_report(ypredIE, ypredNS, ypredTF, ypredJP)
 
+#Plot confusion matix for all four dimensions
 print_confusion_matrix(ypredIE, ypredNS, ypredTF, ypredJP)
 
+#Plot ROC curve
 print_roc_auc_curve(grid1.best_estimator_.predict_proba(X_test_IE), grid2.best_estimator_.predict_proba(X_test_NS),
                     grid3.best_estimator_.predict_proba(X_test_TF),grid4.best_estimator_.predict_proba(X_test_JP))
 
@@ -379,7 +413,8 @@ print_roc_auc_curve(grid1.best_estimator_.predict_proba(X_test_IE), grid2.best_e
 ###Selection of best value of hyperparameter max_depth to avoid overfitting.
 """
 
-from sklearn.ensemble import RandomForestClassifier
+'''Below we perform hyperparameter tuning of Random Forest Classifier to avoid overfitting
+   or underfitting of the model. '''
 
 def depth_accuracy(X_train, Y_train, X_test, Y_test):
   depths = [4, 5, 6, 7, 9, 10, 11, 13, 15, 20]
@@ -404,6 +439,7 @@ def depth_accuracy(X_train, Y_train, X_test, Y_test):
   plt.legend()
   plt.title("Accuracy vs Depth Graph")
 
+'''Plot depth vs accuracy graphs to find the best-tuned value of max_depth'''
 depth_accuracy(X_train_IE, Y_train_IE, X_test_IE, Y_test_IE)
 plt.figure()
 depth_accuracy(X_train_NS, Y_train_NS, X_test_NS, Y_test_NS)
@@ -413,6 +449,7 @@ plt.figure()
 depth_accuracy(X_train_JP, Y_train_JP, X_test_JP, Y_test_JP)
 plt.figure()
 
+'''Predictions using Random Forest Classifier'''
 #IE prediction
 Random_F1 = RandomForestClassifier(max_depth=9, min_samples_split=10, random_state=123)
 grid1=GridSearchCV(Random_F1,{},cv=5)
@@ -436,15 +473,20 @@ ypredJP= grid4.fit(X_train_JP,Y_train_JP).best_estimator_.predict(X_test_JP)
 #Print classificatio report for all four axis
 print_classification_report(ypredIE, ypredNS, ypredTF, ypredJP)
 
+#Plot confusion matrix for all 4 dimnesions
 print_confusion_matrix(ypredIE, ypredNS, ypredTF, ypredJP)
 
+#Plot ROC curve for all 4 dimnesions
 print_roc_auc_curve(grid1.best_estimator_.predict_proba(X_test_IE), grid2.best_estimator_.predict_proba(X_test_NS),
                     grid3.best_estimator_.predict_proba(X_test_TF), grid4.best_estimator_.predict_proba(X_test_JP))
 
 """# KNN Classifier"""
 
-from sklearn.neighbors import KNeighborsClassifier
+#K-Nearest Neighbor Model
 
+'''Below we find the best value of K for our model.
+   Analysis of accuracy vs K graph gives us the best value of K
+   Analysis of accuracy vs K graph are plotted.'''
 def plot_graph(val,xlab,ylab,title):
   plt.figure()
   plt.plot(val)
@@ -499,25 +541,31 @@ print(f'Maximum Accuracy of {df4.max()[0]} at k={df4.idxmax()[0]+1}')
 
 kbest=KNeighborsClassifier(n_neighbors=df1.idxmax()[0]+1)
 ypredIE=kbest.fit(X_train_IE,Y_train_IE).predict(X_test_IE)
+probIE= kbest.predict_proba(X_test_IE)
 
 kbest=KNeighborsClassifier(n_neighbors=df2.idxmax()[0]+1)
 ypredNS=kbest.fit(X_train_NS,Y_train_NS).predict(X_test_NS)
+probNS= kbest.predict_proba(X_test_NS)
 
 kbest=KNeighborsClassifier(n_neighbors=df3.idxmax()[0]+1)
 ypredTF=kbest.fit(X_train_TF,Y_train_TF).predict(X_test_TF)
+probTF= kbest.predict_proba(X_test_TF)
 
 kbest=KNeighborsClassifier(n_neighbors=df4.idxmax()[0]+1)
 ypredJP=kbest.fit(X_train_JP,Y_train_JP).predict(X_test_JP)
+probJP= kbest.predict_proba(X_test_JP)
 
 #Print KNN Results
 print_classification_report(ypredIE, ypredNS, ypredTF, ypredJP)
 
+#Plot ROC curve
+print_roc_auc_curve(probIE, probNS, probTF, probJP)
+
 """#SGD Classifier:"""
 
-from sklearn.linear_model import SGDClassifier
-from sklearn.model_selection import GridSearchCV
-
+#SGDClassifier Model
 sgd_model= SGDClassifier(loss='log') 
+#Apply cross validation
 grid1=GridSearchCV(sgd_model,{},cv=5)
 grid2=GridSearchCV(sgd_model,{},cv=5)
 grid3=GridSearchCV(sgd_model,{},cv=5)
@@ -527,30 +575,40 @@ ypredIE, ypredNS, ypredTF, ypredJP= predict(grid1, grid2, grid3, grid4)
 #Print classificatio report for all four axis
 print_classification_report(ypredIE, ypredNS, ypredTF, ypredJP)
 
+#Plot Confusion Matrix
 print_confusion_matrix(ypredIE, ypredNS, ypredTF, ypredJP)
 
+#plot ROC curve
 print_roc_auc_curve(grid1.best_estimator_.predict_proba(X_test_IE), grid2.best_estimator_.predict_proba(X_test_NS),
                     grid3.best_estimator_.predict_proba(X_test_TF), grid4.best_estimator_.predict_proba(X_test_JP))
 
 """# Support Vector Classification"""
 
-from sklearn.svm import SVC
+#Support Vactor Machines (SVM) model
 
-svm1=SVC(random_state=123)
+#IE prediction
+svm1=SVC(random_state=123, probability=True)
 svm1.fit(X_train_IE,Y_train_IE)
 ypredIE=svm1.predict(X_test_IE)
 
-svm2=SVC(random_state=123)
+#NS prediction
+svm2=SVC(random_state=123, probability=True)
 svm2.fit(X_train_NS,Y_train_NS)
 ypredNS=svm2.predict(X_test_NS)
 
-svm3=SVC(random_state=123)
+#TF prediction
+svm3=SVC(random_state=123, probability=True)
 svm3.fit(X_train_TF,Y_train_TF)
 ypredTF=svm3.predict(X_test_TF)
 
-svm4=SVC(random_state=123)
+#JP prediction
+svm4=SVC(random_state=123, probability=True)
 svm4.fit(X_train_JP,Y_train_JP)
 ypredJP=svm4.predict(X_test_JP)
 
 #Print classificatio report for all four axis
 print_classification_report(ypredIE, ypredNS, ypredTF, ypredJP)
+
+#plot ROC curve
+print_roc_auc_curve(svm1.predict_proba(X_test_IE), svm2.predict_proba(X_test_NS),
+                    svm3.predict_proba(X_test_TF), svm4.predict_proba(X_test_JP))
