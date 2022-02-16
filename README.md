@@ -37,6 +37,7 @@ For further queries feel free to reach out to following contributors.
 * Vidhi Sharma (vidhi19286@iiitd.ac.in)
 
 ## Final Report
-[Report.pdf](https://github.com/dolly19/ML-Project/files/8081709/Report.pdf)
+[embed]https://github.com/dolly19/ML-Project/files/8081709/Report.pdf[/embed]
+
 
 
